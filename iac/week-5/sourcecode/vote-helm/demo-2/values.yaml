@@ -1,0 +1,24 @@
+imageRegistry:
+  server: "harbor.wangwei.devopscamp.us"
+  username: admin
+  password: Harbor12345
+HOST: demo.local
+DB:
+  DB_USER: postgres
+  DB_PASS: postgres
+  DB_HOST: db
+  DB_NAME: postgres
+REDIS:
+  HOST: redis
+OPTION:
+  OPTION_A: "INFOQQ"
+  OPTION_B: "GeekBang"
+RESULT:
+  IMAGE: harbor.wangwei.devopscamp.us/vote/result
+  TAG: env
+VOTE:
+  IMAGE: lyzhang1999/vote
+  TAG: env
+WORKER:
+  IMAGE: lyzhang1999/worker
+  TAG: env

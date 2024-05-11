@@ -1,0 +1,72 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: github-pipeline
+spec:
+  workspaces:
+    - name: output
+    - name: sonar-credentials
+    - name: docker-credentials
+  params:
+    - name: git_url
+    # git repository name
+    - name: git_repository
+      default: "vote"
+    # microservice name(build path)
+    - name: microservice
+      default: "result"
+    - name: registry_url
+      default: ""
+    - name: sonar_host_url
+      default: "http://sonarqube-sonarqube.sonarqube.svc.cluster.local:9000"
+    - name: commit_id
+      default: "latest"
+  tasks:
+    - name: git-clone
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: output
+      params:
+        - name: url
+          value: $(params.git_url)
+    - name: sonarqube-scanner
+      taskRef:
+        name: sonarqube-scanner
+      runAfter:
+        - git-clone
+      workspaces:
+        - name: source
+          workspace: output
+        - name: sonar-credentials
+          workspace: sonar-credentials
+      params:
+        - name: SONAR_HOST_URL
+          value: $(params.sonar_host_url)
+        - name: SONAR_PROJECT_KEY
+          value: $(params.microservice)
+        - name: SOURCE_TO_SCAN
+          value: $(params.microservice)
+        - name: SONAR_ORGANIZATION
+          value: $(params.microservice)
+    - name: kaniko
+      taskRef:
+        name: kaniko
+      runAfter:
+        - sonarqube-scanner
+      workspaces:
+        - name: source
+          workspace: output
+        - name: dockerconfig
+          workspace: docker-credentials
+      params:
+        - name: IMAGE
+          value: $(params.registry_url)/$(params.git_repository)/$(params.microservice):$(params.commit_id)
+        - name: DOCKERFILE
+          value: $(params.microservice)/Dockerfile
+        - name: CONTEXT
+          value: $(params.microservice)
+        - name: EXTRA_ARGS
+          value:
+            - "--insecure"

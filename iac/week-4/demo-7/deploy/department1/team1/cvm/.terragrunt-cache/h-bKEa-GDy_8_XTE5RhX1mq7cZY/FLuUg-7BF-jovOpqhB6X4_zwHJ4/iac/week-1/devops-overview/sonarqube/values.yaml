@@ -1,0 +1,17 @@
+account:
+  adminPassword: admin123
+  currentAdminPassword: admin
+
+ingress:
+  enabled: true
+  hosts:
+    - name: "sonar.wei2.gkdevopscamp.com"
+  ingressClassName: gitlab-nginx
+
+prometheusMonitoring:
+  podMonitor:
+    enabled: true
+    namespace: monitoring
+
+prometheusExporter:
+  enabled: true

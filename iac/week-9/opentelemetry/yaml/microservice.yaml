@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opentelemetry-python
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opentelemetry-python
+  template:
+    metadata:
+      labels:
+        app: opentelemetry-python
+    spec:
+      containers:
+        - name: opentelemetry-python
+          image: lyzhang1999/opentelemetry-python
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1000Mi
+            requests:
+              cpu: 50m
+              memory: 50Mi
+          ports:
+            - containerPort: 8000
+        - name: siege
+          image: yokogawa/siege
+          command: ["/bin/sh", "-c"]
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1000Mi
+            requests:
+              cpu: 50m
+              memory: 50Mi
+          args:
+            - |
+              while true;
+              do
+                siege -c 1 -r 10 http://localhost:8000/
+                siege -c 3 -r 5 http://localhost:8000/io
+                siege -c 2 -r 5 http://localhost:8000/cpu
+                siege -c 5 -r 3 http://localhost:8000/random_sleep
+                siege -c 2 -r 10 http://localhost:8000/random_status
+                siege -c 2 -r 3 http://localhost:8000/chain
+                siege -c 1 -r 1 http://localhost:8000/error_test
+                sleep 5
+              done
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opentelemetry-python
+  labels:
+    app: opentelemetry-python
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      name: web
+      targetPort: 8000
+  selector:
+    app: opentelemetry-python

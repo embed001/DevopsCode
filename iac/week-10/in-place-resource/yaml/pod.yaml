@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: in-place-demo
+spec:
+  containers:
+    - name: in-place-demo
+      image: nginx
+      resizePolicy:
+        - resourceName: cpu
+          restartPolicy: NotRequired
+        - resourceName: memory
+          restartPolicy: RestartContainer
+      resources:
+        limits:
+          memory: "150Mi"
+          cpu: "150m"
+        requests:
+          memory: "150Mi"
+          cpu: "150m"

@@ -1,0 +1,40 @@
+# name: Docker Build Matrix
+# on:
+#   push:
+
+# jobs:
+#   docker:
+#     runs-on: ubuntu-latest
+#     strategy:
+#       matrix:
+#         include:
+#           - image: harbor.wangwei.devopscamp.us/vote/result
+#             path: result
+#           - image: harbor.wangwei.devopscamp.us/vote/vote
+#             path: vote
+#           - image: harbor.wangwei.devopscamp.us/vote/worker
+#             path: worker
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
+
+#       - name: Login to Docker Hub
+#         uses: docker/login-action@v3
+#         with:
+#           registry: harbor.wangwei.devopscamp.us
+#           username: ${{ secrets.DOCKER_USERNAME }}
+#           password: ${{ secrets.DOCKER_PASSWORD }}
+
+#       - name: Extract metadata for Docker
+#         id: meta
+#         uses: docker/metadata-action@v4
+#         with:
+#           images: ${{ matrix.image }}
+
+#       - name: Build and push
+#         uses: docker/build-push-action@v4
+#         with:
+#           context: ./${{ matrix.path }}
+#           file: ${{ matrix.path }}/Dockerfile
+#           push: true
+#           tags: ${{ matrix.image }}:${{ github.sha }}

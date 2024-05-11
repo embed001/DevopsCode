@@ -1,0 +1,39 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-other-registries
+  annotations:
+    policies.kyverno.io/title: Disallow Other Registries
+    policies.kyverno.io/description: >-
+      Images registry address must be begin with docker.io
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: pod-validate-registries
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "Image registry address must be begin with docker.io"
+        pattern:
+          spec:
+            containers:
+              - image: docker.io/*
+    - name: validate-registries
+      match:
+        resources:
+          kinds:
+            - DaemonSet
+            - Deployment
+            - Job
+            - StatefulSet
+      validate:
+        message: "Image registry address must be begin with docker.io"
+        pattern:
+          spec:
+            template:
+              spec:
+                containers:
+                  - image: docker.io/*

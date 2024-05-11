@@ -1,0 +1,71 @@
+controller:
+  adminPassword: "password123"
+  prometheus:
+    enabled: true
+    serviceMonitorNamespace: "monitoring"
+  installPlugins:
+    - kubernetes:3937.vd7b_82db_e347b_
+    - workflow-aggregator:596.v8c21c963d92d
+    - git:5.1.0
+    - configuration-as-code:1647.ve39ca_b_829b_42
+  additionalPlugins:
+    - prometheus:2.2.3
+    - kubernetes-credentials-provider:1.211.vc236a_f5a_2f3c
+    - job-dsl:1.84
+    - github:1.37.1
+    - github-branch-source:1725.vd391eef681a_e
+    - gitlab-branch-source:660.vd45c0f4c0042
+#    - gitlab-plugin:1.7.14
+#    - gitlab-api:5.2.0-86.v1ed41a_9cf486
+  JCasC:
+    defaultConfig: true
+    configScripts:
+      welcome-message: |
+       jenkins:
+         systemMessage: Welcome to GeekBang Cloud Native Camp!
+      jenkins-casc-configs: |
+        unclassified:
+          gitLabServers:
+            servers:
+              - credentialsId: "gitlab-pull-secret"
+                manageWebHooks: true
+                manageSystemHooks: true
+                name: "gitlab-server"
+                serverUrl: "https://gitlab.gkdevopscamp.com"
+                hooksRootUrl: ""
+      example-job: |
+        jobs:
+          - script: >
+              multibranchPipelineJob('build-go-example') {
+                branchSources {
+                  //github {
+                  //  id('build-go-example')
+                  //  scanCredentialsId('github-pull-secret')
+                  //  checkoutCredentialsId('github-pull-secret')
+                  //  repoOwner('lyzhang1999')
+                  //  repository('camp-go-example')
+                    //buildOriginBranchWithPR(false)
+                    //buildOriginPRMerge(true)
+                    //buildForkPRMerge(true)
+                  //}
+                  git {
+                    id("build-go-example")
+                    remote("https://gitlab.gkdevopscamp.com/root/camp-go-example.git")
+                    credentialsId("github-pull-secret")
+                  }
+                  gitlab {
+                    serverName('gitlab-server')
+                    projectOwner('root')
+                    projectPath('root/camp-go-example')
+                    credentialsId('gitlab-pull-secret')
+                  }
+                }
+                triggers {
+                  periodicFolderTrigger {
+                    interval("1")
+                  }
+                }
+                orphanedItemStrategy {
+                  discardOldItems()
+                }
+              }

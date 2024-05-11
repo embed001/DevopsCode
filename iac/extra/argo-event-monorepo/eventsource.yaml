@@ -1,0 +1,45 @@
+kind: Secret
+apiVersion: v1
+metadata:
+  name: github-creds
+  namespace: argo-events
+stringData:
+  # TODO 注意凭据有效性
+  username: github_username
+  password: github_pat
+type: Opaque
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: github
+  namespace: argo-events
+spec:
+  # 为了方便测试，稍后需要修改为 NodePort
+  service:
+    ports:
+      - name: devops-camp
+        port: 12000
+        targetPort: 12000
+  github:
+    # 对应 sensor 中的 eventName
+    devops-camp:
+      repositories:
+        - owner: devops-advanced-camp
+          names:
+            - vote
+      webhook:
+        endpoint: /push
+        port: "12000"
+        method: POST
+        # TODO 修改为集群 IP 地址
+        url: http://43.129.188.152:30000
+      events:
+        #- "*"
+        - "push"
+      apiToken:
+        name: github-creds
+        key: password
+      insecure: true
+      active: true
+      contentType: json

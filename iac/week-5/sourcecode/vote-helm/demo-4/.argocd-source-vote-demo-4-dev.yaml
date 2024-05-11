@@ -1,0 +1,8 @@
+helm:
+  parameters:
+  - name: RESULT.IMAGE
+    value: harbor.wangwei.devopscamp.us/vote/result
+    forcestring: true
+  - name: RESULT.TAG
+    value: dev-release1
+    forcestring: true

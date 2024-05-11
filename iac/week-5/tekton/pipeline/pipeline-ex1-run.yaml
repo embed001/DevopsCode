@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: github-pipeline-ex1
+spec:
+  taskRunSpecs:
+    - pipelineTaskName: git-clone
+      serviceAccountName: build-bot
+  pipelineRef:
+    name: github-pipeline-ex1
+  params:
+    - name: git_url
+      value: "https://github.com/devops-advanced-camp/vote.git"
+  workspaces:
+    - name: output
+      persistentVolumeClaim:
+        claimName: pipeline-pvc
+      subPath: $(context.pipelineRun.uid)

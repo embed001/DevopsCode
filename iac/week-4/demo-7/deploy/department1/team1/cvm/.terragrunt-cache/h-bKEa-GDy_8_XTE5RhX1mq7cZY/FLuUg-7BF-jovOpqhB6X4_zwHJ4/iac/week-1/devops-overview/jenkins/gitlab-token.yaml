@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: "gitlab-token"
+  labels:
+    "jenkins.io/credentials-type": "gitlabToken"
+  annotations:
+    "jenkins.io/credentials-description" : "credentials from Kubernetes of GitLab"
+type: Opaque
+stringData:
+  text: glpat-W1EnrRBixH8RuqDzezmR

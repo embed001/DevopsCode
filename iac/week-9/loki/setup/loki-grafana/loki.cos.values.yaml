@@ -1,0 +1,15 @@
+loki:
+  commonConfig:
+    replication_factor: 1
+  storage:
+    bucketNames:
+      chunks: loki-1301578102
+    type: "s3"
+    s3:
+      endpoint: cos.ap-hongkong.myqcloud.com
+      region: ap-hongkong
+      secretAccessKey: b0BD5NSKArOjwzsa5MUs8TxRn
+      accessKeyId: AKIDGUhp9nN6qaFqR1UL4kFap8nLo
+  auth_enabled: false
+singleBinary:
+  replicas: 1

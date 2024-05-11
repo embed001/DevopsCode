@@ -1,0 +1,244 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: workflow-sa
+  namespace: argo-events
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: workflow-sa-role
+  namespace: argo-events
+rules:
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - workflowtaskresults
+    verbs:
+      - create
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: workflow-sa-role-binding
+  namespace: argo-events
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: workflow-sa-role
+subjects:
+  - kind: ServiceAccount
+    name: workflow-sa
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: argo-ci
+  namespace: argo-events
+spec:
+  serviceAccountName: workflow-sa
+  entrypoint: ci
+  onExit: send-webhook
+  artifactGC:
+    strategy: OnWorkflowDeletion
+  volumeClaimTemplates:
+    - metadata:
+        name: workdir
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 500Mi
+  arguments:
+    parameters:
+      - name: repo
+        value: https://github.com/devops-advanced-camp/vote.git
+      - name: revision
+        value: main
+      - name: oci-registry
+        value: "docker.io/lyzhang1999"
+      - name: oci-image
+        value: vote
+      - name: oci-tag
+        value: v1.1.1
+      # 要构建的服务，大仓场景
+      - name: microservice
+        value: vote
+  templates:
+    - name: ci
+      dag:
+        tasks:
+          - name: git-clone
+            template: git-clone
+          - name: ls
+            template: ls
+            dependencies:
+              - git-clone
+          - name: build
+            template: build
+            dependencies:
+              - git-clone
+              - ls
+          - name: trivy-image-scan
+            template: trivy-image-scan
+            dependencies:
+              - build
+          - name: trivy-filesystem-scan
+            template: trivy-filesystem-scan
+            dependencies:
+              - build
+          - name: push-image
+            template: push-image
+            dependencies:
+              - trivy-filesystem-scan
+              - trivy-image-scan
+    - name: git-clone
+      inputs:
+        parameters:
+          - name: repo
+            value: "{{workflow.parameters.repo}}"
+          - name: revision
+            value: "{{workflow.parameters.revision}}"
+        artifacts:
+          - name: argo-source
+            path: /src
+            git:
+              repo: "{{inputs.parameters.repo}}"
+              revision: "{{inputs.parameters.revision}}"
+              usernameSecret:
+                name: github-creds
+                key: username
+              passwordSecret:
+                name: github-creds
+                key: password
+      container:
+        image: alpine:3.17
+        command:
+          - sh
+          - -c
+        args:
+          - cp -r /src/* .
+        workingDir: /workdir
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+    - name: ls
+      container:
+        image: alpine:3.17
+        command:
+          - sh
+          - -c
+        args:
+          - ls /
+        workingDir: /workdir
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+    - name: build
+      inputs:
+        parameters:
+          - name: oci-registry
+            value: "{{workflow.parameters.oci-registry}}"
+          - name: oci-image
+            value: "{{workflow.parameters.oci-image}}"
+          - name: oci-tag
+            value: "{{workflow.parameters.oci-tag}}"
+          - name: microservice
+            value: "{{workflow.parameters.microservice}}"
+      container:
+        image: gcr.io/kaniko-project/executor:latest
+        args:
+          - --context=/workdir/{{workflow.parameters.microservice}}
+          - "--destination={{inputs.parameters.oci-registry}}/{{inputs.parameters.oci-image}}:{{inputs.parameters.oci-tag}}"
+          - --no-push
+          - --tar-path=/workdir/.tar
+        workingDir: /workdir
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+    - name: trivy-image-scan
+      inputs:
+        parameters:
+          - name: oci-tag
+            value: ""
+      container:
+        image: aquasec/trivy
+        args:
+          - image
+          - --input=/workdir/.tar
+          - --severity=CRITICAL
+          - --exit-code=1
+          - --ignore-unfixed
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+    - name: trivy-filesystem-scan
+      inputs:
+        parameters:
+          - name: oci-tag
+            value: ""
+      container:
+        image: aquasec/trivy
+        args:
+          - filesystem
+          - /workdir
+          - --ignorefile=/workdir/.tar
+          #- --severity=HIGH,CRITICAL
+          - --severity=CRITICAL
+          - --exit-code=1
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+    - name: push-image
+      inputs:
+        parameters:
+          - name: oci-registry
+            value: "{{workflow.parameters.oci-registry}}"
+          - name: oci-image
+            value: "{{workflow.parameters.oci-image}}"
+          - name: oci-tag
+            value: "{{workflow.parameters.oci-tag}}"
+      container:
+        image: gcr.io/go-containerregistry/crane:debug
+        env:
+          - name: OCI_REGISTRY_USER
+            valueFrom:
+              secretKeyRef:
+                name: registry-credentials
+                key: username
+          - name: OCI_REGISTRY_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: registry-credentials
+                key: password
+        command:
+          - /busybox/sh
+          - -c
+        args:
+          - >
+            crane auth login docker.io -u $OCI_REGISTRY_USER -p $OCI_REGISTRY_PASSWORD &&  
+            crane push /workdir/.tar {{inputs.parameters.oci-registry}}/{{inputs.parameters.oci-image}}:{{inputs.parameters.oci-tag}}
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+
+    - name: send-webhook
+      script:
+        image: curlimages/curl:7.72.0
+        command: ["curl"]
+        args:
+          - "-X"
+          - "POST"
+          - "-H"
+          - "Content-Type: application/json"
+          - "-d"
+          - >
+            {  
+              "msg_type":"text",  
+              "content":{  
+                "text":"CI: {{workflow.name}}，状态：{{workflow.status}}，耗时：{{workflow.duration}}"  
+              }  
+            }
+          - "https://open.feishu.cn/open-apis/bot/v2/hook/e9adbd58-7e89-437c-afdf-2efe24369237"

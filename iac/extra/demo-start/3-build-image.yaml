@@ -1,0 +1,74 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: git-clone-build-image
+spec:
+  entrypoint: main
+  volumeClaimTemplates:
+    - metadata:
+        name: workdir
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Mi
+  templates:
+    - name: main
+      dag:
+        tasks:
+          - name: git-clone
+            template: git-clone
+          - name: build
+            template: build
+            dependencies:
+              - git-clone
+
+    - name: git-clone
+      inputs:
+        artifacts:
+          - name: argo-source
+            path: /src
+            git:
+              repo: "https://github.com/devops-advanced-camp/vote.git"
+              revision: "main"
+              usernameSecret:
+                name: github-creds
+                key: username
+              passwordSecret:
+                name: github-creds
+                key: password
+      container:
+        image: alpine:3.17
+        command:
+          - sh
+          - -c
+        args:
+          - cp -r /src/* .
+        workingDir: /workdir
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+
+    - name: build
+      inputs:
+        parameters:
+          - name: oci-registry
+            value: "docker.io/lyzhang1999"
+          - name: oci-image
+            value: "vote"
+          - name: oci-tag
+            value: "main"
+          - name: microservice
+            value: "vote"
+      container:
+        image: gcr.io/kaniko-project/executor:latest
+        args:
+          - --context=/workdir/{{inputs.parameters.microservice}}
+          - "--destination={{inputs.parameters.oci-registry}}/{{inputs.parameters.oci-image}}:{{inputs.parameters.oci-tag}}"
+          - --no-push
+          - --tar-path=/workdir/.tar
+        workingDir: /workdir
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir

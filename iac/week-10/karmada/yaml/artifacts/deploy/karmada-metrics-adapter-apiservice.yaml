@@ -1,0 +1,57 @@
+# https://github.com/karmada-io/karmada/blob/5180ad50342978a0215a287a7514f23a6ca8e470/artifacts/deploy/karmada-metrics-adapter-apiservice.yaml
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1beta1.metrics.k8s.io
+  labels:
+    app: karmada-metrics-adapter
+    apiserver: "true"
+spec:
+  # 不允许格式化，否则报错
+  caBundle: {{caBundle}}
+  group: metrics.k8s.io
+  groupPriorityMinimum: 2000
+  service:
+    name: karmada-metrics-adapter
+    namespace: karmada-system
+  version: v1beta1
+  versionPriority: 10
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1beta2.custom.metrics.k8s.io
+spec:
+  service:
+    name: karmada-metrics-adapter
+    namespace: karmada-system
+  group: custom.metrics.k8s.io
+  version: v1beta2
+  # 不允许格式化，否则报错
+  caBundle: {{caBundle}}
+  groupPriorityMinimum: 100
+  versionPriority: 200
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1beta1.custom.metrics.k8s.io
+spec:
+  service:
+    name: karmada-metrics-adapter
+    namespace: karmada-system
+  group: custom.metrics.k8s.io
+  version: v1beta1
+  # 不允许格式化，否则报错
+  caBundle: {{caBundle}}
+  groupPriorityMinimum: 100
+  versionPriority: 200
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: karmada-metrics-adapter
+  namespace: karmada-system
+spec:
+  type: ExternalName
+  externalName: karmada-metrics-adapter.karmada-system.svc.cluster.local

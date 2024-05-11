@@ -1,0 +1,16 @@
+# 参考模板
+# type: COS
+# config:
+#   bucket: "${bucket_name}-${app_id}"
+#   region: ap-hongkong
+#   endpoint: ${endpoint}
+#   secret_id: ${secret_id}
+#   secret_key: ${secret_key}
+
+type: COS
+config:
+  bucket: "thanos-1301578102"
+  region: ap-hongkong
+  endpoint: https://thanos-1301578102.cos.ap-hongkong.myqcloud.com
+  secret_id:
+  secret_key:

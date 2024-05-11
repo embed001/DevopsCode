@@ -1,0 +1,18 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: week9-app-keda-hpa-cron
+  namespace: app
+spec:
+  scaleTargetRef:
+    name: week9-prometheus-app
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  cooldownPeriod: 30 # 仅演示，生产建议设置为 300
+  triggers:
+  - type: cron
+    metadata:
+      timezone: Asia/Shanghai
+      start: 0 8 * * *
+      end: 0 22 * * *
+      desiredReplicas: "5"

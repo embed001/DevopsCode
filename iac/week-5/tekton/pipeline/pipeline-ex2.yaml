@@ -1,0 +1,43 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: github-pipeline-ex2
+spec:
+  workspaces:
+    - name: output
+    - name: docker-credentials
+  params:
+    - name: git_url
+  tasks:
+    # task 1: git-clone
+    - name: git-clone
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: output
+      params:
+        - name: url
+          # 指向 pipeline 定义的 git_url 参数
+          value: $(params.git_url)
+    # task 2: build image with kaniko
+    - name: kaniko
+      taskRef:
+        name: kaniko
+      runAfter:
+        - git-clone
+      workspaces:
+        - name: source
+          workspace: output
+        - name: dockerconfig
+          workspace: docker-credentials
+      params:
+        - name: IMAGE
+          value: harbor.wangwei.devopscamp.us/vote/result:latest
+        - name: DOCKERFILE
+          value: result/Dockerfile
+        - name: CONTEXT
+          value: result
+        - name: EXTRA_ARGS
+          value:
+            - "--insecure"

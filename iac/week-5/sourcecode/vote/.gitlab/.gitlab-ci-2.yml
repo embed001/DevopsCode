@@ -1,0 +1,48 @@
+# pipeline 使用的镜像
+image: docker:latest
+
+variables:
+  REGISTRY_URL: "harbor.wangwei.devopscamp.us"
+  REGISTRY_PROJECT: "vote"
+
+# 定义外部服务，可以理解为是 sidecar 容器的概念。
+services:
+  - docker:dind
+
+stages:
+  - build
+
+# job 在运行之前的命令，这里安装 git 和 ssh 客户端
+# docker login 的变量是在 GitLab 项目的 Settings -> CI/CD -> Variables 中定义的
+before_script:
+  - apk add --no-cache git
+  - "which ssh-agent || ( apk update -y && apk add openssh-client git -y )"
+  - eval $(ssh-agent -s)
+  - echo "$DOCKER_PASSWORD" | docker login $REGISTRY_URL -u $DOCKER_USERNAME --password-stdin
+
+build:
+  stage: build
+  script:
+    - |
+      for dir in */
+      do
+        dir=${dir%*/}
+        if git diff --quiet HEAD^ HEAD -- ./$dir
+        then
+          echo "$dir: false" >> changed_dirs.txt
+        else
+          echo "$dir: true" >> changed_dirs.txt
+        fi
+      done
+      cat changed_dirs.txt
+    - |
+      while IFS= read -r line
+      do
+        dir=$(echo $line | cut -d ':' -f 1)
+        changed=$(echo $line | cut -d ' ' -f 2)
+        if [ "$changed" == "true" ] && [ -f "./$dir/Dockerfile" ]
+        then
+          docker build -t $REGISTRY_URL/$REGISTRY_PROJECT/$dir:${CI_COMMIT_SHA} ./$dir
+          docker push $REGISTRY_URL/$REGISTRY_PROJECT/$dir:${CI_COMMIT_SHA}
+        fi
+      done < changed_dirs.txt

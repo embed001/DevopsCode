@@ -1,0 +1,43 @@
+# https://grafana.com/grafana/dashboards/17642-sonarqube-scan-dashboard/
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonar-expoter
+  namespace: sonarqube
+spec:
+  selector:
+    matchLabels:
+      app: sonar-expoter
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: sonar-expoter
+    spec:
+      containers:
+      - name: sonar-expoter
+        image: return200/sonarqube-exporter:latest
+        env:
+        - name: SONARQUBE_SERVER
+          value: "http://sonar.wei2.gkdevopscamp.com"
+        - name: SONARQUBE_TOKEN
+          value: "squ_21af8d9a767951fa9c21eaa8f59f630bd52daf5d"
+        ports:
+        - containerPort: 8198
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonar-expoter
+  namespace: sonarqube
+  labels:
+    app.kubernetes.io/name: sonar-expoter
+spec:
+  selector:
+    app: sonar-expoter
+  ports:
+  - name: metrics
+    port: 8198
+    targetPort: 8198
+    protocol: TCP
+  type: ClusterIP

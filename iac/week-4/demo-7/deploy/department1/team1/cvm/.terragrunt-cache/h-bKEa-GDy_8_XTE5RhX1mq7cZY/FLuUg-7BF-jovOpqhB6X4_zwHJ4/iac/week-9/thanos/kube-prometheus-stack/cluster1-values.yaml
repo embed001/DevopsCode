@@ -1,0 +1,37 @@
+grafana:
+  adminPassword: "password123"
+  sidecar:
+    dashboards:
+      provider:
+        allowUiUpdates: true
+  service:
+    type: NodePort
+    nodePort: 30080
+
+prometheus:
+  prometheusSpec:
+    podMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    externalLabels:
+      cluster: k3s-hongkong-1
+    disableCompaction: true
+    retention: 6h
+    thanos:
+      objectStorageConfig:
+        existingSecret:
+          name: thanos-objectstorage
+          key: thanos.yaml
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+  thanosService:
+    enabled: true
+  thanosServiceMonitor:
+    enabled: true
+  thanosServiceExternal:
+    enabled: true
+    type: NodePort

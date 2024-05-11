@@ -1,0 +1,20 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: github-pipeline-ex1
+spec:
+  workspaces:
+    - name: output
+  params:
+    - name: git_url
+  tasks:
+    - name: git-clone
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: output
+      params:
+        - name: url
+          # 指向 pipeline 定义的 git_url 参数
+          value: $(params.git_url)

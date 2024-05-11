@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vote-dev
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/result.allow-tags: regexp:^main
+    argocd-image-updater.argoproj.io/result.helm.image-name: RESULT.IMAGE
+    argocd-image-updater.argoproj.io/result.helm.image-tag: RESULT.TAG
+    argocd-image-updater.argoproj.io/result.pull-secret: pullsecret:argocd/harbor-pull-secret
+    argocd-image-updater.argoproj.io/image-list: result=harbor.wangwei.devopscamp.us/vote/result
+    argocd-image-updater.argoproj.io/update-strategy: latest
+    argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/git-branch: main
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/devops-advanced-camp/vote-helm.git
+    targetRevision: HEAD
+    path: demo-2
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vote-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

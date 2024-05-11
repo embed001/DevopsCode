@@ -1,0 +1,40 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: github-pipeline
+spec:
+  taskRunSpecs:
+    - pipelineTaskName: git-clone
+      serviceAccountName: build-bot
+  pipelineRef:
+    name: github-pipeline
+  params:
+    - name: git_url
+      value: "https://github.com/devops-advanced-camp/vote.git"
+    - name: microservice
+      value: "result"
+    - name: git_repository
+      value: "vote"
+    - name: commit_id
+      value: "latest"
+    - name: registry_url
+      value: "harbor.wangwei.devopscamp.us"
+  workspaces:
+    # - name: output
+    #   volumeClaimTemplate:
+    #     spec:
+    #       accessModes:
+    #         - ReadWriteOnce
+    #       resources:
+    #         requests:
+    #           storage: 20Mi
+    - name: output
+      persistentVolumeClaim:
+        claimName: pipeline-pvc
+      subPath: $(context.pipelineRun.uid)
+    - name: sonar-credentials
+      secret:
+        secretName: sonar-user-pass
+    - name: docker-credentials
+      secret:
+        secretName: docker-credentials

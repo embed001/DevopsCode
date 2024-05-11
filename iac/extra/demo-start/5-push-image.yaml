@@ -1,0 +1,155 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: git-clone-build-image-trivy-push-image
+spec:
+  entrypoint: main
+  volumeClaimTemplates:
+    - metadata:
+        name: workdir
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Mi
+  templates:
+    - name: main
+      dag:
+        tasks:
+          - name: git-clone
+            template: git-clone
+          - name: build
+            template: build
+            dependencies:
+              - git-clone
+          - name: trivy-image-scan
+            template: trivy-image-scan
+            dependencies:
+              - build
+          - name: trivy-filesystem-scan
+            template: trivy-filesystem-scan
+            dependencies:
+              - build
+          - name: push-image
+            template: push-image
+            dependencies:
+              - trivy-filesystem-scan
+              - trivy-image-scan
+
+    - name: git-clone
+      inputs:
+        artifacts:
+          - name: argo-source
+            path: /src
+            git:
+              repo: "https://github.com/devops-advanced-camp/vote.git"
+              revision: "main"
+              usernameSecret:
+                name: github-creds
+                key: username
+              passwordSecret:
+                name: github-creds
+                key: password
+      container:
+        image: alpine:3.17
+        command:
+          - sh
+          - -c
+        args:
+          - cp -r /src/* .
+        workingDir: /workdir
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+
+    - name: build
+      inputs:
+        parameters:
+          - name: oci-registry
+            value: "docker.io/lyzhang1999"
+          - name: oci-image
+            value: "vote"
+          - name: oci-tag
+            value: "main"
+          - name: microservice
+            value: "vote"
+      container:
+        image: gcr.io/kaniko-project/executor:latest
+        args:
+          - --context=/workdir/{{inputs.parameters.microservice}}
+          - "--destination={{inputs.parameters.oci-registry}}/{{inputs.parameters.oci-image}}:{{inputs.parameters.oci-tag}}"
+          - --no-push
+          - --tar-path=/workdir/.tar
+        workingDir: /workdir
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+
+    - name: trivy-image-scan
+      inputs:
+        parameters:
+          - name: oci-tag
+            value: ""
+      container:
+        image: aquasec/trivy
+        args:
+          - image
+          - --input=/workdir/.tar
+          - --severity=CRITICAL
+          - --exit-code=1
+          - --ignore-unfixed
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+
+    - name: trivy-filesystem-scan
+      inputs:
+        parameters:
+          - name: oci-tag
+            value: ""
+      container:
+        image: aquasec/trivy
+        args:
+          - filesystem
+          - /workdir
+          - --ignorefile=/workdir/.tar
+          #- --severity=HIGH,CRITICAL
+          - --severity=CRITICAL
+          - --exit-code=1
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+
+    - name: push-image
+      inputs:
+        parameters:
+          - name: oci-registry
+            value: "docker.io/lyzhang1999"
+          - name: oci-image
+            value: "vote"
+          - name: oci-tag
+            value: "main"
+      container:
+        image: gcr.io/go-containerregistry/crane:debug
+        env:
+          - name: OCI_REGISTRY_USER
+            valueFrom:
+              secretKeyRef:
+                name: registry-credentials
+                key: username
+          - name: OCI_REGISTRY_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: registry-credentials
+                key: password
+        command:
+          - /busybox/sh
+          - -c
+        args:
+          - >
+            crane auth login docker.io -u $OCI_REGISTRY_USER -p $OCI_REGISTRY_PASSWORD &&  
+            crane push /workdir/.tar {{inputs.parameters.oci-registry}}/{{inputs.parameters.oci-image}}:{{inputs.parameters.oci-tag}}
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir

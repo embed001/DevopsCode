@@ -1,0 +1,33 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: argocd-notifications-cm
+  namespace: argocd
+data:
+  context: |
+    argocdUrl: ""
+  service.webhook.github-webhook: |
+    url: https://api.github.com
+    headers:
+    - name: Authorization
+      value: Bearer $github_token
+    subscriptions: |
+      - recipients
+        - github-webhook
+        triggers:
+        - on-sync-succeeded
+  template.app-sync-succeeded: |
+    webhook:
+      github-webhook:
+        method: POST
+        path: /repos/{{.app.metadata.annotations.githubOwner}}/{{.app.metadata.annotations.githubRepo}}/issues/{{.app.metadata.annotations.prNumber}}/comments
+        body: |
+          {
+            "body": "Preview environment is ready: http://{{.app.spec.destination.namespace}}.vote.{{.app.metadata.annotations.prPreviewHost}}"
+          }
+  trigger.on-sync-succeeded: |
+    - description: Application syncing has succeeded
+      send:
+      - app-sync-succeeded
+      when: app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy'
+      oncePer: app.status.operationState.syncResult.revision

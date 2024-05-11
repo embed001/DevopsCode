@@ -1,0 +1,30 @@
+controller:
+  initContainerEnv:
+    - name: JENKINS_UC_DOWNLOAD
+      value: "http://mirrors.cloud.tencent.com/jenkins"
+  containerEnv:
+    - name: HARBOR_URL
+      value: "harbor.wei4.gkdevopscamp.com"
+  ingress:
+    enabled: true
+    hostName: jenkins.wei4.gkdevopscamp.com
+    ingressClassName: gitlab-nginx
+  adminPassword: "password123"
+  # prometheus:
+  #   enabled: true
+  #   serviceMonitorNamespace: "monitoring"
+  installPlugins:
+    - kubernetes:3937.vd7b_82db_e347b_
+    - workflow-aggregator:596.v8c21c963d92d
+    - git:5.1.0
+    - configuration-as-code:1647.ve39ca_b_829b_42
+  additionalPlugins:
+    - prometheus:2.2.3
+    - kubernetes-credentials-provider:1.211.vc236a_f5a_2f3c
+    - job-dsl:1.84
+    - github:1.37.1
+    - github-branch-source:1725.vd391eef681a_e
+    - gitlab-branch-source:660.vd45c0f4c0042
+    - gitlab-kubernetes-credentials:132.v23fd732822dc
+    - pipeline-stage-view:2.33
+    - sonar:2.15

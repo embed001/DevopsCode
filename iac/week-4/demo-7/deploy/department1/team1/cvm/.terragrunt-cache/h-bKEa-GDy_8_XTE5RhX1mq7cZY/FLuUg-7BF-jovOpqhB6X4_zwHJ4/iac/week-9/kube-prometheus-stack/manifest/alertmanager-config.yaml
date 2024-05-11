@@ -1,0 +1,14 @@
+# apiVersion: monitoring.coreos.com/v1alpha1
+# kind: AlertmanagerConfig
+# metadata:
+#   name: alertmanager-config
+#   labels:
+#     alertmanagerConfig: alertmanager-config
+# spec:
+#   receivers:
+#     - name: 'prometheusalert'
+#       webhookConfigs:
+#         - url: 'http://prometheus-alert-center.monitoring:8080/prometheusalert?type=fs&tpl=prometheus-fs&fsurl=${feishu_url}'
+#   route:
+#     receiver: 'prometheusalert'
+#     groupBy: ['namespace']

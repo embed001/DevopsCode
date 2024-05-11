@@ -1,0 +1,64 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: github-pipeline-ex3
+spec:
+  workspaces:
+    - name: output
+    - name: docker-credentials
+    - name: sonar-credentials
+  params:
+    - name: git_url
+  tasks:
+    # task 1: git-clone
+    - name: git-clone
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: output
+      params:
+        - name: url
+          # 指向 pipeline 定义的 git_url 参数
+          value: $(params.git_url)
+    # task 2: scan code
+    - name: sonarqube-scanner
+      taskRef:
+        name: sonarqube-scanner
+      runAfter:
+        - git-clone
+      workspaces:
+        - name: source
+          workspace: output
+        - name: sonar-credentials
+          workspace: sonar-credentials
+      params:
+        - name: SONAR_HOST_URL
+          value: "http://sonar.wangwei.devopscamp.us/"
+        - name: SONAR_PROJECT_KEY
+          value: result
+        - name: SOURCE_TO_SCAN
+          value: result
+        - name: SONAR_ORGANIZATION
+          value: result
+    # task 3: build image with kaniko
+    - name: kaniko
+      taskRef:
+        name: kaniko
+      runAfter:
+        - sonarqube-scanner
+      workspaces:
+        - name: source
+          workspace: output
+        - name: dockerconfig
+          workspace: docker-credentials
+      params:
+        - name: IMAGE
+          value: harbor.wangwei.devopscamp.us/vote/result:latest
+        - name: DOCKERFILE
+          value: result/Dockerfile
+        - name: CONTEXT
+          value: result
+        - name: EXTRA_ARGS
+          value:
+            - "--insecure"

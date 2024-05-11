@@ -1,0 +1,31 @@
+master:
+  customInitContainers:
+  - name: add-ca-certs
+    image: "jenkins/jenkins:lts"
+    imagePullPolicy: Always
+    env:
+    - name: CA_CERTS_BASE64
+      value: "..."
+    command: 
+    - "sh"
+    - "-c"
+    - >
+      echo $CA_CERTS_BASE64 | base64 -d > /tmp/custom-ca-certs.crt
+      && cat /etc/ssl/certs/ca-certificates.crt /tmp/custom-ca-certs.crt > /cacerts-share/ca-certificates.crt
+      && cp ${JAVA_HOME}/jre/lib/security/cacerts /cacerts-share/cacerts 
+      && chmod 644 /cacerts-share/cacerts
+      && ${JAVA_HOME}/bin/keytool -import -trustcacerts -alias custom-ca-certs -keystore /cacerts-share/cacerts -file /tmp/custom-ca-certs.crt -noprompt -storepass changeit
+    volumeMounts:
+    - name: cacerts-share
+      mountPath: /cacerts-share
+persistence:
+  volumes:
+  - name: cacerts-share
+    emptyDir: {}
+  mounts:
+  - mountPath: /etc/ssl/certs/ca-certificates.crt
+    name: cacerts-share
+    subPath: ca-certificates.crt
+  - mountPath: /usr/local/openjdk-8/jre/lib/security/cacerts
+    name: cacerts-share
+    subPath: cacerts

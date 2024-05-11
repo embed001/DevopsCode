@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: vote-pr-applicationset
+  namespace: argocd
+spec:
+  generators:
+    - pullRequest:
+        github:
+          owner: devops-advanced-camp
+          repo: vote
+          tokenRef:
+            secretName: github-token
+            key: token
+        requeueAfterSeconds: 30
+  template:
+    metadata:
+      name: "vote-pull-request-{{branch}}-{{number}}"
+    spec:
+      project: default
+      source:
+        repoURL: "https://github.com/devops-advanced-camp/vote-helm.git"
+        targetRevision: HEAD
+        path: "demo-6"
+        helm:
+          valueFiles:
+            - "values.yaml"
+          parameters:
+            - name: "RESULT.TAG"
+              value: "{{head_sha}}"
+            - name: "VOTE.TAG"
+              value: "{{head_sha}}"
+            - name: "WORKER.TAG"
+              value: "{{head_sha}}"
+      destination:
+        server: "https://kubernetes.default.svc"
+        namespace: "vote-pull-request-{{number}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

@@ -1,0 +1,85 @@
+kind: Secret
+apiVersion: v1
+metadata:
+  name: github-creds
+stringData:
+  # TODO 注意凭据有效性
+  username: github_username
+  # github personal access token
+  password: github_pat
+type: Opaque
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: registry-credentials
+stringData:
+  # TODO 注意凭据有效性
+  username: docker_username
+  password: dckr_pat
+type: Opaque
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: git-clone
+spec:
+  entrypoint: main
+  volumeClaimTemplates:
+    - metadata:
+        name: workdir
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Mi
+  templates:
+    - name: main
+      dag:
+        tasks:
+          - name: git-clone
+            template: git-clone
+          - name: ls
+            template: ls
+            dependencies:
+              - git-clone
+
+    - name: git-clone
+      inputs:
+        artifacts:
+          - name: argo-source
+            path: /src
+            git:
+              repo: "https://github.com/devops-advanced-camp/vote.git"
+              revision: "main"
+              usernameSecret:
+                name: github-creds
+                key: username
+              passwordSecret:
+                name: github-creds
+                key: password
+      container:
+        image: alpine:3.17
+        command:
+          - sh
+          - -c
+        args:
+          - cp -r /src/* .
+        workingDir: /workdir
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+
+    - name: ls
+      container:
+        image: alpine:3.17
+        command:
+          - sh
+          - -c
+        args:
+          - ls /workdir
+        workingDir: /workdir
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir

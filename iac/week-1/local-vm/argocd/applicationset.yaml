@@ -1,0 +1,41 @@
+# argocd-image-updater.argoproj.io/image-list, repoURL field will be update by init.sh
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: camp-go-example
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: "https://gitlab.wei2.gkdevopscamp.com/root/camp-go-example-helm.git"
+        revision: HEAD
+        files:
+          - path: "charts/env/*/values.yaml"
+  template:
+    metadata:
+      name: "{{path.basename}}"
+      annotations:
+        argocd-image-updater.argoproj.io/camp-go-example.allow-tags: regexp:^{{path.basename}}
+        argocd-image-updater.argoproj.io/camp-go-example.helm.image-name: image.repository
+        argocd-image-updater.argoproj.io/camp-go-example.helm.image-tag: image.tag
+        argocd-image-updater.argoproj.io/camp-go-example.pull-secret: pullsecret:argocd/regcred
+        argocd-image-updater.argoproj.io/image-list: camp-go-example=harbor.wei2.gkdevopscamp.com/library/camp-go-example
+        argocd-image-updater.argoproj.io/update-strategy: latest
+        argocd-image-updater.argoproj.io/write-back-method: git
+        argocd-image-updater.argoproj.io/git-branch: main
+    spec:
+      project: default
+      source:
+        repoURL: "https://gitlab.wei2.gkdevopscamp.com/root/camp-go-example-helm.git"
+        targetRevision: HEAD
+        path: "charts"
+        helm:
+          valueFiles:
+            - "env/{{path.basename}}/values.yaml"
+      destination:
+        server: 'https://kubernetes.default.svc'
+        namespace: '{{path.basename}}'
+      syncPolicy:
+        automated: {}
+        syncOptions:
+          - CreateNamespace=true

@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cluster-autoscaler
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      qcloud-app: cluster-autoscaler
+  template:
+    metadata:
+      labels:
+        qcloud-app: cluster-autoscaler
+    spec:
+      containers:
+        - args:
+            - --cloud-provider=tencentcloud
+            - --v=4
+            - --ok-total-unready-count=3
+            - --cloud-config=/etc/kubernetes/qcloud.conf
+            - --scale-down-utilization-threshold=0.8
+            - --scale-down-enabled=true
+            - --max-total-unready-percentage=33
+            - --nodes=1:100:asg-dh2b1fj5
+            - --logtostderr
+            - --kubeconfig=/kubeconfig/config
+          command:
+            - /cluster-autoscaler
+          env:
+            - name: SECRET_ID
+              valueFrom:
+                secretKeyRef:
+                  name: tencentcloud-secret
+                  key: tencentcloud_secret_id
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: tencentcloud-secret
+                  key: tencentcloud_secret_key
+            - name: REGION
+              value: ap-hongkong
+            - name: CLUSTER_ID
+              value: cls-0x4hbenm
+          image: ccr.ccs.tencentyun.com/tkeimages/cluster-autoscaler:v1.18.4-49692187a
+          imagePullPolicy: Always
+          name: cluster-autoscaler
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - mountPath: /etc/localtime
+              name: tz-config
+            - name: kubeconfig-volume
+              mountPath: /kubeconfig/config
+              subPath: kubeconfig.yaml
+      hostAliases:
+        - hostnames:
+            - as.tencentcloudapi.com
+            - cvm.tencentcloudapi.com
+            - vpc.tencentcloudapi.com
+          ip: 169.254.0.95
+      restartPolicy: Always
+      serviceAccount: kube-admin
+      serviceAccountName: kube-admin
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+      volumes:
+        - hostPath:
+            path: /etc/localtime
+            type: ""
+          name: tz-config
+        - name: kubeconfig-volume
+          configMap:
+            name: kubeconfig-configmap

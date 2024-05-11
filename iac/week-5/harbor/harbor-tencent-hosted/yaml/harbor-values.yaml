@@ -1,0 +1,30 @@
+persistence:
+  imageChartStorage:
+    type: s3
+    s3:
+      region: ap-hongkong
+      # bucket: ${bucket}
+      # accesskey: ${secret_id}
+      # secretkey: ${secret_key}
+      # regionendpoint: ${endpoint}
+
+expose:
+  ingress:
+    annotations:
+      kubernetes.io/tls-acme: "true"
+      cert-manager.io/issuer: "harbor-issuer"
+
+portal:
+  replicas: 2
+
+core:
+  replicas: 2
+
+jobservice:
+  replicas: 2
+
+registry:
+  replicas: 2
+
+chartmuseum:
+  replicas: 2
